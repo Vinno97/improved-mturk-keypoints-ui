@@ -1,26 +1,3 @@
-// var console = console || {}; // just in case
-console.watch = function (oObj, sProp) {
-  var sPrivateProp = "$_" + sProp + "_$"; // to minimize the name clash risk
-  oObj[sPrivateProp] = oObj[sProp];
-
-  // overwrite with accessor
-  Object.defineProperty(oObj, sProp, {
-    get: function () {
-      return oObj[sPrivateProp];
-    },
-
-    set: function (value) {
-      //console.log("setting " + sProp + " to " + value);
-      debugger; // sets breakpoint
-      oObj[sPrivateProp] = value;
-    },
-  });
-};
-
-window.onload = () => {
-  console.log("window loaded");
-};
-
 const labelConfiguration = {
   "Left Ear": {
     title: "Left Ear",
@@ -169,9 +146,10 @@ const labelConfiguration = {
 
 class KeypointInteractor {
   constructor() {
-    this.eventHandlers = [];
     this.interceptors = [];
     this._dispatch = null;
+    this.shortcuts = {};
+    this.storeListeners = [];
   }
 
   async init() {
@@ -180,23 +158,14 @@ class KeypointInteractor {
     this.labels = this.ck.labels;
     this.shadowRoot = this.ck.$["react-mount-point"];
 
-    this.addInterceptor("SET_ACTIVE_LABEL_ID", this.setActiveLabel.bind(this));
-    this.addInterceptor("SET_ANNOTATIONS", this.nextLabel.bind(this));
-    this.addInterceptor("SET_LABELS", this.overrideLabelColors.bind(this));
-
-    // Due to how React works, we have to override this label each time the
-    // surrounding UI is changed.
-    this.store.subscribe(this.overwriteNothingToAnnotate.bind(this));
-    // The following events seem to suffice, but offer no advantages to the
-    // above solution.
-    // this.addInterceptor(
-    //   "TOGGLE_NOTHING_TO_ANNOTATE",
-    //   this.overwriteNothingToAnnotate.bind(this)
-    // );
-    // this.addInterceptor(
-    //   "ENABLE_SUBMIT_BUTTON",
-    //   this.overwriteNothingToAnnotate.bind(this)
-    // );
+    this.store.subscribe(() => {
+      const state = this.store.getState();
+      for (let listener of this.storeListeners) {
+        // setTimeout because we will likely do DOM manipulation in this callback
+        // without the delay, the React hasn't changed the DOM yet
+        setTimeout(() => listener.call(this, state, this), 0);
+      }
+    });
 
     this._dispatch = this.store.dispatch.bind(this.store);
     const stubbedDispatch = this.dispatch.bind(this);
@@ -205,19 +174,49 @@ class KeypointInteractor {
         return stubbedDispatch;
       },
     });
+
+    this.shadowRoot.addEventListener("keypress", (event) => {
+      const key = event.key;
+
+      if (!(key in this.shortcuts)) {
+        return;
+      }
+
+      const fun = this.shortcuts[event.key];
+
+      const funcName = fun.name.split(" ").slice(-1)[0];
+      console.log(
+        'Executing custom shortcut "' + key + '": "' + funcName + '"'
+      );
+      fun.call(this, this);
+    });
   }
 
-  overwriteNothingToAnnotate() {
-    setTimeout(() => {
-      const selector = "#nothing-to-annotate .awsui-checkbox-label";
-      const label = this.shadowRoot.querySelector(selector);
-      label.innerText = "No child present";
-    }, 0);
+  dispatch({ type, ...args }) {
+    console.log("Incoming dispatch: ", { type, ...args });
+
+    args = this.interceptors
+      .filter(([action, _]) => action == type)
+      .map(([_, interceptor]) => interceptor)
+      .reduce(
+        (acc, interceptor) => interceptor.call(this, this, acc) || acc,
+        args
+      );
+
+    console.log("Outgoing dispatch: ", { type, ...args });
+    // this._dispatch.apply(object, { type, ...args });
+    this._dispatch({ type, ...args });
   }
 
-  setActiveLabel(obj) {
-    const { id } = obj;
-    this.activeLabel = this.labels.indexOf(id);
+  selectNextLabel() {
+    const nextIdx = (this.activeLabel + 1) % this.labels.length;
+    this.selectLabel(nextIdx);
+  }
+
+  selectPreviousLabel() {
+    let activeLabel = this.activeLabel || this.labels.length;
+    const nextIdx = activeLabel - 1;
+    this.selectLabel(nextIdx);
   }
 
   nextLabel() {
@@ -238,16 +237,16 @@ class KeypointInteractor {
     });
   }
 
-  overrideLabelColors(message) {
-    return { ...message, labels: labelConfiguration };
-  }
-
-  addEventListener(event, listener) {
-    this.eventHandlers.push([event, listener]);
+  subscribe(func) {
+    this.storeListeners.push(func);
   }
 
   addInterceptor(action, interceptor) {
     this.interceptors.push([action, interceptor]);
+  }
+
+  addShortcut(key, func) {
+    this.shortcuts[key] = func;
   }
 
   async getElement(selector, refresh = 100, timeout = 10000) {
@@ -277,22 +276,9 @@ class KeypointInteractor {
       }
     });
   }
-
-  dispatch({ type, ...args }) {
-    console.log("Incoming dispatch: ", { type, ...args });
-
-    args = this.interceptors
-      .filter(([action, _]) => action == type)
-      .map(([_, interceptor]) => interceptor)
-      .reduce((acc, interceptor) => interceptor(acc) || acc, args);
-
-    console.log("Outgoing dispatch: ", { type, ...args });
-    // this._dispatch.apply(object, { type, ...args });
-    this._dispatch({ type, ...args });
-  }
 }
 
-function uniqueKeypoints(data) {
+function uniqueKeypoints(_, data) {
   const { annotations, ...rest } = data;
 
   const annMapping = data.annotations.reduce(
@@ -303,40 +289,134 @@ function uniqueKeypoints(data) {
   return { annotations: uniqueAnns, ...rest };
 }
 
-function interceptLabel({ labels }) {}
+function setActiveLabel(interactor, { id }) {
+  interactor.activeLabel = interactor.labels.indexOf(id);
+}
 
-async function waitForLabels() {
-  return new Promise((resolve) => {
-    const refreshInterval = setInterval(selectFirstLabel, 100);
+function overrideLabelColors(_, message) {
+  return { ...message, labels: labelConfiguration };
+}
 
-    function selectFirstLabel() {
-      if (getLabel(0)) {
-        clearInterval(refreshInterval);
-        resolve();
-      }
-    }
-  });
+function continueToNextLabel(interactor) {
+  const state = interactor.store.getState();
+  if (
+    !state.canvas.selectedAnnotationId &&
+    state.tool.activeToolId == "keypoint"
+  ) {
+    interactor.selectNextLabel();
+  }
+}
+
+function patchAnnotationErrorMessage(interactor, message) {
+  if (message.header === "You haven't labeled the image") {
+    return {
+      message: "Please label the requested item(s).",
+      ...message,
+    };
+  }
 }
 
 const interactor = new KeypointInteractor();
+
+interactor.addShortcut("n", interactor.selectNextLabel);
+interactor.addShortcut("N", interactor.selectNextLabel);
+interactor.addShortcut("p", interactor.selectPreviousLabel);
+interactor.addShortcut("P", interactor.selectPreviousLabel);
+
 interactor.addInterceptor("SET_ANNOTATIONS", uniqueKeypoints);
+interactor.addInterceptor("SET_ANNOTATIONS", continueToNextLabel);
+interactor.addInterceptor("SET_ACTIVE_LABEL_ID", setActiveLabel);
+interactor.addInterceptor("SET_LABELS", overrideLabelColors);
+interactor.addInterceptor(
+  "SET_AND_DISPLAY_ERROR_MESSAGE",
+  patchAnnotationErrorMessage
+);
+
+function showCustomShortcuts(descriptions, state, interactor) {
+  if (state.sidenav.shortcutNavOpen) {
+    const panel = interactor.shadowRoot.querySelector(".shortcut-nav-panel");
+
+    const template = panel.querySelector(".tool-hotkey");
+
+    for (let [key, description] of Object.entries(descriptions)) {
+      const newNode = template.cloneNode(true);
+      newNode.querySelector(".icon-text").innerText = description;
+      newNode.querySelector(".hotkey").innerText = key;
+      panel.appendChild(newNode);
+      console.log(newNode);
+    }
+  }
+}
+
+function applyCustomCSS(_, interactor) {
+  const elementId = "custom-style";
+
+  if (!interactor.shadowRoot.querySelector("elementId")) {
+    var style = document.createElement("style");
+    style.setAttribute("id", elementId);
+    style.innerHTML = `
+      #nothing-to-annotate {
+        display: none;
+      }
+    `;
+    interactor.shadowRoot.appendChild(style);
+  }
+}
+
+// function overwriteNothingToAnnotate(interactor) {
+//   setTimeout(() => {
+//     const selector = "#nothing-to-annotate .awsui-checkbox-label";
+//     const label = interactor.shadowRoot.querySelector(selector);
+//     label.innerText = "No child present";
+//   }, 0);
+// }
+
+// TOGGLE_SHORTCUTSNAV is fired before the DOM is altered, so we need to wait for the state change itself.
+
+shortkeyDescriptions = {
+  n: "Select next label",
+  p: "Select previous label",
+  "0-9, q,w,e,r,t,y,u": "Select specific label ",
+};
+
+interactor.subscribe(showCustomShortcuts.bind(null, shortkeyDescriptions));
+interactor.subscribe(applyCustomCSS);
+// interactor.subscribe(overwriteNothingToAnnotate);
 
 document
   .querySelector("crowd-keypoint")
   .addEventListener("crowd-element-ready", async (event) => {
     console.log("Crowd element ready");
-    const target = event.target;
-    const mount = target.$["react-mount-point"];
 
-    // await waitForLabels();
-
-    target.store.subscribe(() => {
-      console.log(target.store.getState());
+    event.target.store.subscribe(() => {
+      console.log(event.target.store.getState());
     });
 
     interactor.init();
     interactor.selectLabel(0);
   });
+
+/**
+ * DEBUG FUNCTIONS
+ */
+
+console.watch = function (oObj, sProp) {
+  var sPrivateProp = "$_" + sProp + "_$"; // to minimize the name clash risk
+  oObj[sPrivateProp] = oObj[sProp];
+
+  // overwrite with accessor
+  Object.defineProperty(oObj, sProp, {
+    get: function () {
+      return oObj[sPrivateProp];
+    },
+
+    set: function (value) {
+      //console.log("setting " + sProp + " to " + value);
+      debugger; // sets breakpoint
+      oObj[sPrivateProp] = value;
+    },
+  });
+};
 
 function stubFunction(object, property) {
   let func = object[property];
