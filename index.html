@@ -1,11 +1,135 @@
-<script src="https://assets.crowd.aws/crowd-html-elements.js"></script>
+<html>
+  <head> </head>
+  <body>
+    <script src="https://assets.crowd.aws/crowd-html-elements.js"></script>
 
-<crowd-form answer-format="flatten-objects">
-  <div id="errorBox"></div>
+    <style>
+      .annotation-example {
+        width: 100%;
+        height: 300px;
+        display: flex;
+      }
 
-  <crowd-keypoint
-    src="https://carpe-diem.s3.eu-central-1.amazonaws.com/American+football%2F9+year+old+Rugby+Goal+kicking+Practice.mp4%2F1868%2F0.jpg"
-    labels="['Left Ear', 
+      .annotation-example > div {
+        background-image: url(https://kinetic-kids-pose-utrecht-university.s3.eu-central-1.amazonaws.com/example-annotated.svg);
+        flex-grow: 1;
+        margin: 2px;
+      }
+
+      .head-example > div {
+        background-size: 2600px;
+        background-position-y: -135px;
+      }
+
+      .head-example > div:nth-child(1) {
+        background-position-x: 16%;
+      }
+      .head-example > div:nth-child(2) {
+        background-position-x: center;
+      }
+      .head-example > div:nth-child(3) {
+        background-position-x: 84%;
+      }
+
+      .torso-example > div {
+        background-size: 2000px;
+        background-position-y: -320px;
+      }
+      .torso-example > div:nth-child(1) {
+        background-position-x: 10%;
+      }
+      .torso-example > div:nth-child(2) {
+        background-position-x: 41%;
+      }
+      .torso-example > div:nth-child(3) {
+        background-position-x: 92%;
+      }
+
+      .legs-example > div {
+        background-size: 1200px;
+        background-position-y: -330px;
+      }
+      .legs-example > div:nth-child(1) {
+        background-position-x: 11%;
+      }
+      .legs-example > div:nth-child(2) {
+        background-position-x: 50%;
+      }
+      .legs-example > div:nth-child(3) {
+        background-position-x: 89%;
+      }
+
+      .keypoint-name {
+        font-family: monospace;
+        /* color: gray; */
+        font-size: small;
+        padding: 0.2em;
+        background-color: rgb(235, 235, 235);
+        border-radius: 3px;
+      }
+
+      /*
+      .left-ear {
+        color: rgb(0, 255, 0);
+      }
+      .left-eye {
+        color: rgb(0, 179, 0);
+      }
+      .right-ear {
+        color: rgb(255, 255, 0);
+      }
+      .right-eye {
+        color: rgb(179, 179, 0);
+      }
+      .nose-tip {
+        color: rgb(255, 0, 255);
+      }
+      .left-shoulder {
+        color: rgb(105, 24, 180);
+      }
+      .left-elbow {
+        color: rgb(138, 43, 226);
+      }
+      .left-wrist {
+        color: rgb(168, 98, 234);
+      }
+      .right-shoulder {
+        color: rgb(157, 78, 21);
+      }
+      .right-elbow {
+        color: rgb(224, 111, 31);
+      }
+      .right-wrist {
+        color: rgb(234, 154, 98);
+      }
+      .left-hip {
+        color: rgb(0, 0, 179);
+      }
+      .left-knee {
+        color: rgb(0, 0, 255);
+      }
+      .left-ankle {
+        color: rgb(77, 77, 255);
+      }
+      .right-hip {
+        color: rgb(128, 0, 21);
+      }
+      .right-knee {
+        color: rgb(204, 0, 34);
+      }
+      .right-ankle {
+        color: rgb(255, 26, 64);
+      }
+      */
+    </style>
+
+    <crowd-form answer-format="flatten-objects">
+      <div id="errorBox"></div>
+
+      <!-- src="https://carpe-diem.s3.eu-central-1.amazonaws.com/American+football%2F9+year+old+Rugby+Goal+kicking+Practice.mp4%2F1868%2F0.jpg" -->
+      <crowd-keypoint
+        src="./example2.jpg"
+        labels="['Left Ear', 
                  'Left Eye', 
                  'Right Ear', 
                  'Right Eye', 
@@ -22,33 +146,167 @@
                  'Right Hip',
                  'Right Knee',
                  'Right Ankle']"
-    header="Place points on the requested item(s)"
-    name="annotatedResult"
-  >
-    <short-instructions>
-      <p>Place points on the requested item(s).</p>
-      <p>Use the subject's left and right, not yours.</p>
-    </short-instructions>
+        header="Place points on the requested item(s)"
+        name="annotatedResult"
+      >
+        <short-instructions>
+          <p>Place points on the requested body parts.</p>
+          <p>Use the subject's left and right, not yours.</p>
+          <p>
+            Do not include body parts that are occluded by another limb or
+            object.
+            <!-- , even though you think you can interpolate the whole shape of the target. -->
+          </p>
+          <p>
+            The subject is the <strong>child</strong> best indicated by the red
+            outline.
+          </p>
+          <p>Make sure all labelled points belong to the same child.</p>
+          <p>
+            In some cases, we provide a red arrow to clarify which child is the
+            subject.
+          </p>
+          <p>
+            <strong
+              >Make sure you have the correct label selected when placing a
+              point!</strong
+            >
+          </p>
+          <h2>Example annotation</h2>
+          <p>
+            The image below is an example of what we expect to be submitted.
+          </p>
+          <img
+            src="https://kinetic-kids-pose-utrecht-university.s3.eu-central-1.amazonaws.com/annotated-example.png"
+            width="100%"
+          />
+          <p>More concise examples can be found under "More Instructions".</p>
+        </short-instructions>
 
-    <full-instructions header="Instructions">
-      <p>
-        Use the point tool to place points on the requested target(s) of
-        interest:
-      </p>
-      <ol>
-        <li>
-          Place a point in the center of the item using your mouse over each
-          instance of the target.
-        </li>
-        <li>
-          Do not include parts of the target that cannot be seen, even though
-          you think you can interpolate the whole shape of the target.
-        </li>
-        <li>Use the subject's left and right, not yours.</li>
-        <li>Avoid shadows, they're not considered as a part of the target.</li>
-      </ol>
-    </full-instructions>
-  </crowd-keypoint>
-</crowd-form>
+        <full-instructions header="Instructions">
+          <p>Use the point tool to place points on the requested joints:</p>
+          <ul>
+            <li>
+              Place a point in the center of the item using your mouse over each
+              instance of the target.
+            </li>
+            <li>
+              Do not include body parts that are occluded by another limb or
+              object.
+              <!-- Do not include parts of the subject that cannot be seen, even
+              though you think you can interpolate the whole shape of the
+              target. -->
+            </li>
+            <li>Use the subject's left and right, not yours.</li>
+            <li>
+              In case multiple persons are visible, the subject is the
+              <strong>child</strong>
+              whose profile is best indicated by the red outline. In most cases
+              this child is located centrally in the box.
+            </li>
+            <li>
+              The red boxes are automatically generated but manually verified.
+              In some cases we have manually indicated which child is the
+              subject for clarity purposes.
+            </li>
+            <li>Make sure all labelled points belong to the same child.</li>
+            <li>
+              <strong
+                >It is very important that you have the correct label selected
+                when placing a point.</strong
+              >
+            </li>
+          </ul>
+          <crowd-tabs>
+            <crowd-tab header="Face">
+              <h2>Example annotations</h2>
 
-<script src="./main.js"></script>
+              <!-- <img class="annotation-example head-example" /> -->
+              <div class="annotation-example head-example">
+                <div></div>
+                <div></div>
+                <div></div>
+              </div>
+
+              <h2>Clarification</h2>
+              <ul>
+                <li>
+                  Place the <span class="keypoint-name">Nose</span> keypoint on
+                  the very tip of the nose.
+                </li>
+                <li>
+                  Place the eye (<span class="keypoint-name left-eye"
+                    >Left Eye</span
+                  >, <span class="keypoint-name right-eye">Right Eye</span>)
+                  keypoints on the center point of the eyeball.
+                </li>
+                <li>
+                  Place the ear (<span class="keypoint-name left-ear"
+                    >Left Ear</span
+                  >, <span class="keypoint-name right-ear">Right Ear</span>)
+                  keypoints on the entrance of the ear canal.
+                </li>
+                <li>
+                  Note the rear view does not have the eyes, nose or left ear
+                  annotated, as these are all occluded.
+                </li>
+              </ul>
+            </crowd-tab>
+
+            <crowd-tab header="Torso">
+              <h2>Example annotations</h2>
+
+              <div class="annotation-example torso-example">
+                <div></div>
+                <div></div>
+                <div></div>
+              </div>
+
+              <h2>Clarification</h2>
+              <ul>
+                <li>
+                  Place each torso keypoint (<span
+                    class="keypoint-name right-shoulder"
+                    >Right Shoulder</span
+                  >, <span class="keypoint-name right-elbow">Right Elbow</span>,
+                  <span class="keypoint-name right-wrist">Right Wrist</span>,
+                  <span class="keypoint-name left-shoulder">Left Shoulder</span
+                  >, <span class="keypoint-name left-elbow">Left Elbow</span>,
+                  <span class="keypoint-name left-wrist">Left Wrist</span>) at
+                  the center of the corresponding joint.
+                </li>
+              </ul>
+            </crowd-tab>
+
+            <crowd-tab header="Lower-body">
+              <h2>Example annotations</h2>
+
+              <div class="annotation-example legs-example">
+                <div></div>
+                <div></div>
+                <div></div>
+              </div>
+
+              <h2>Clarification</h2>
+              <ul>
+                <li>
+                  Place each lower-body keypoint (<span
+                    class="keypoint-name right-hip"
+                    >Right Hip</span
+                  >, <span class="keypoint-name right-knee">Right Knee</span>,
+                  <span class="keypoint-name right-ankle">Right Ankle</span>,
+                  <span class="keypoint-name left-hip">Left Hip</span>,
+                  <span class="keypoint-name left-knee">Left Knee</span>,
+                  <span class="keypoint-name left-ankle">Left Ankle</span>) at
+                  the center of the corresponding joint.
+                </li>
+              </ul>
+            </crowd-tab>
+          </crowd-tabs>
+        </full-instructions>
+      </crowd-keypoint>
+    </crowd-form>
+
+    <script src="./main.js"></script>
+  </body>
+</html>

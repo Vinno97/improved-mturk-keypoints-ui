@@ -307,11 +307,13 @@ function continueToNextLabel(interactor) {
   }
 }
 
-function patchAnnotationErrorMessage(interactor, message) {
-  if (message.header === "You haven't labeled the image") {
+function patchAnnotationErrorMessage(interactor, { errorContent }) {
+  if (errorContent.header === "You haven't labeled the image") {
     return {
-      message: "Please label the requested item(s).",
-      ...message,
+      errorContent: {
+        ...errorContent,
+        message: "Please label the requested item(s).",
+      },
     };
   }
 }
@@ -386,12 +388,14 @@ interactor.subscribe(applyCustomCSS);
 document
   .querySelector("crowd-keypoint")
   .addEventListener("crowd-element-ready", async (event) => {
+    if (event.target.localName != "crowd-keypoint") return;
+
     console.log("Crowd element ready");
 
-    event.target.store.subscribe(() => {
-      console.log(event.target.store.getState());
-    });
-
+    // event.target.store.subscribe(() => {
+    //   console.log(event.target.store.getState());
+    // });
+    console.log(event);
     interactor.init();
     interactor.selectLabel(0);
   });
