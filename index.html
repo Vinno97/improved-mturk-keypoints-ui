@@ -68,6 +68,17 @@
         border-radius: 3px;
       }
 
+      .checkboxes > div {
+        margin: 1rem;
+        margin-bottom: 0;
+        font-weight: 600;
+        font-size: 1.5em;
+      }
+
+      .checkboxes > crowd-checkbox {
+        margin: 0.5rem 1rem;
+      }
+
       /*
       .left-ear {
         color: rgb(0, 255, 0);
@@ -125,8 +136,24 @@
 
     <crowd-form answer-format="flatten-objects">
       <div id="errorBox"></div>
+      <div class="checkboxes">
+        <div>
+          Please make sure to select one or more of the following checkboxes if
+          the image matches the described conditions.
+        </div>
+        <crowd-checkbox name="contains-other-child"
+          >Image contains another (unannotated) child</crowd-checkbox
+        >
+        <crowd-checkbox name="contains-other-adult"
+          >Image contains another (unannotated) adult</crowd-checkbox
+        >
+        <crowd-checkbox name="subject-interacts"
+          >Newly annotated subject interacts with other subject</crowd-checkbox
+        >
+      </div>
 
       <!-- src="https://carpe-diem.s3.eu-central-1.amazonaws.com/American+football%2F9+year+old+Rugby+Goal+kicking+Practice.mp4%2F1868%2F0.jpg" -->
+      <!-- src="${image_url}" -->
       <crowd-keypoint
         src="./example2.jpg"
         labels="['Left Ear', 
